@@ -20,6 +20,6 @@ public:
 
 private:
 	uint *voxels;
-	vec3 center;
+	uint *baseVoxels;
 };
 

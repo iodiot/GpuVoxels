@@ -59,45 +59,50 @@ Ray BuildRay()
 	return false;
 }*/
 
-float DistanceToBoundingBox(in vec3 p)
-{
-	vec3 d = abs(p / 32.0 + vec3(32.0));
-  float mc = max(d.x, max(d.y, d.z));
-  return 32.0 * min(mc, length(max(d, 0.0)));
-}
-
 bool PerformDda(in Ray r, out ivec3 p, out int lastCrossed)
 {
-	// Find intersection point with bounding box 
-	// if observer is beyond voxel map
-  //if (r.o.x < 0 || r.o.x >= boundaries.x || r.o.y < 0 || r.o.y >= boundaries.y || r.o.z < 0 || r.o.z >= boundaries.z)
-	//	r.o = r.o + r.d * (DistanceToBoundingBox(r.o));
+	vec3 boxMin = vec3(0.0);
+	vec3 boxMax = vec3(boundaries);
+	vec3 t0 = (boxMin - r.o) / r.d;
+	vec3 t1 = (boxMax - r.o) / r.d;
+	vec3 nearAxis = min(t0, t1);
+	vec3 farAxis = max(t0, t1);
+	float tEnter = max(max(nearAxis.x, nearAxis.y), nearAxis.z);
+	float tExit = min(min(farAxis.x, farAxis.y), farAxis.z);
+	if (tExit < max(tEnter, 0.0))
+		return false;
 
-	lastCrossed  = 0;
-	p = ivec3(r.o);
+	vec3 start = r.o;
+	lastCrossed = 1;
+	if (tEnter >= 0.0)
+	{
+		start = r.o + r.d * (tEnter + 0.0001);
+		if (nearAxis.x >= nearAxis.y && nearAxis.x >= nearAxis.z)
+			lastCrossed = 0;
+		else if (nearAxis.z >= nearAxis.y)
+			lastCrossed = 2;
+	}
+	p = ivec3(floor(start));
 
 	vec3 side;
-  vec3 delta = 1.0 / abs(r.d);
+	vec3 delta = 1.0 / abs(r.d);
 	ivec3 step = ivec3(sign(r.d));
 
-  if (r.d.x < 0)
-    side.x = (r.o.x - p.x) * delta.x;
-  else
-    side.x = (p.x + 1.0 - r.o.x) * delta.x;
-
-  if (r.d.y < 0)
-    side.y = (r.o.y - p.y) * delta.y;
-  else
-    side.y = (p.y + 1.0 - r.o.y) * delta.y;
-
-  if (r.d.z < 0)
-    side.z = (r.o.z - p.z) * delta.z;
-  else
-    side.z = (p.z + 1.0 - r.o.z) * delta.z;
+	if (r.d.x < 0) side.x = (start.x - p.x) * delta.x;
+	else side.x = (p.x + 1.0 - start.x) * delta.x;
+	if (r.d.y < 0) side.y = (start.y - p.y) * delta.y;
+	else side.y = (p.y + 1.0 - start.y) * delta.y;
+	if (r.d.z < 0) side.z = (start.z - p.z) * delta.z;
+	else side.z = (p.z + 1.0 - start.z) * delta.z;
 
 	// Dda
-	while (p.x >= 0 && p.x < boundaries.x && p.x >= 0 && p.z < boundaries.z && p.z >= 0 && p.z < boundaries.z)
+	while (p.x >= 0 && p.x < boundaries.x
+		&& p.y >= 0 && p.y < boundaries.y
+		&& p.z >= 0 && p.z < boundaries.z)
 	{
+		if (length(texelFetch(voxels, p, 0)) > 0.0)
+			return true;
+
 		if (side.x < side.y)
 		{
 			if (side.x < side.z)
@@ -129,8 +134,6 @@ bool PerformDda(in Ray r, out ivec3 p, out int lastCrossed)
 			}
 		}
 		
-		if (length(texelFetch(voxels, p, 0)) > 0) 
-			return true; 
 	} 
 
 	return false;
@@ -160,5 +163,9 @@ void main()
 	if (PerformDda(r, p, lastCrossed))
 		fragColor = vec4(GetShading(r, p, lastCrossed), 1.0);
 	else
-		fragColor = vec4(0.0, 0.7, 1.0, 1.0);
+	{
+		float horizon = smoothstep(0.0, 1.0, texCoord.y);
+		vec3 sky = mix(vec3(0.012, 0.025, 0.055), vec3(0.025, 0.15, 0.22), horizon);
+		fragColor = vec4(sky, 1.0);
+	}
 }

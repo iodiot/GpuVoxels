@@ -31,10 +31,10 @@ const float texCoordData[] = {
 };
 
 // Camera
-vec3 cameraPosition(0.0f, 32.0f, 0.0f);
-vec3 cameraLookAt(32.0f, 0.0f, 32.0f);
+vec3 cameraPosition(-38.0f, 82.0f, -38.0f);
+vec3 cameraLookAt(32.0f, 10.0f, 32.0f);
 const float cameraUp[] = {0.0f, 1.0f, 0.0f};
-const float cameraViewPlaneDistance = 1000.0f;
+const float cameraViewPlaneDistance = 560.0f;
 
 // Screen
 float resolution[] = {640.0f, 480.0f};
@@ -62,7 +62,7 @@ GLuint CreateVolumeTexture(int size)
 	glGenSamplers(1, &sid);
 	glSamplerParameteri(sid, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glSamplerParameteri(sid, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glBindSampler(tid, sid);
+	glBindSampler(0, sid);
 
 	delete[] data;
 
@@ -218,7 +218,7 @@ void Display()
 	glUniform3fv(location, 1, cameraUp);
 
 	location = glGetUniformLocation(programHandle, "cameraViewPlaneDistance");
-	glUniform1f(location, cameraViewPlaneDistance);
+	glUniform1f(location, cameraViewPlaneDistance * resolution[1] / 480.0f);
 
 	location = glGetUniformLocation(programHandle, "resolution");
 	glUniform2fv(location, 1, resolution);
@@ -230,7 +230,7 @@ void Display()
 	world->CopyIntoVolumeTexture(volumeTexture);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_3D, volumeTexture);
-	location = glGetUniformLocation(programHandle,"volumeTexture");
+	location = glGetUniformLocation(programHandle, "voxels");
 	glUniform1i(location, 0);
 
 	glBindVertexArray(vaoHandle);
